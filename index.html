@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#060a0e" />
+  <meta name="description" content="CUADC AEROLAB · 中国大学生飞行器设计创新大赛 12 项竞赛飞行器交互式三维图鉴。程序化 Three.js 建模、部件拆解、风洞与气流实验室。" />
+  <title>CUADC AEROLAB · 飞行器交互图鉴</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23060a0e'/%3E%3Cpath d='M32 8 56 32 32 56 8 32Z' fill='none' stroke='%235ee7c2' stroke-width='2'/%3E%3Cpath d='M20 32h24M32 20v24' stroke='%235ee7c2' stroke-width='2'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="brand-txt">
+        <div class="brand-name">CUADC <b>//</b> AEROLAB</div>
+        <div class="brand-sub">中国大学生飞行器设计创新大赛 · 交互式工程图鉴</div>
+      </div>
+    </div>
+
+    <nav class="mainnav" aria-label="工作模式">
+      <button class="navbtn active" data-mode="showroom" title="机库 / Hangar"><span class="ni">◈</span><span>机库<small>HANGAR</small></span></button>
+      <button class="navbtn" data-mode="wind" title="风洞 / Wind Tunnel"><span class="ni">≋</span><span>风洞<small>WIND TUNNEL</small></span></button>
+      <button class="navbtn" data-mode="airflow" title="气流 / Soaring Lab"><span class="ni">⌁</span><span>气流<small>SOARING LAB</small></span></button>
+      <button class="navbtn" data-mode="mission" title="任务 / Mission"><span class="ni">▶</span><span>任务<small>MISSION</small></span></button>
+    </nav>
+
+    <div class="topmeta">
+      <div class="live"><span class="dot"></span><span id="fps">WEBGL</span></div>
+      <div class="rule-ver">CUADC 2026 <span>VER 20260330</span></div>
+      <div class="mobile-actions">
+        <button id="m-projects">☰ 项目</button>
+        <button id="m-details">参数</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="sidebar" id="sidebar">
+      <div class="side-head">
+        <div>
+          <div class="eyebrow">COMPETITION INDEX</div>
+          <h2>项目索引</h2>
+        </div>
+        <div class="count">12<small>EVENTS</small></div>
+      </div>
+      <div class="side-scroll" id="project-list"></div>
+      <div class="side-foot">
+        <div class="mini-rule"><span>规则基准</span><b>2026 公开版</b></div>
+        <p>机型为自主概念设计；品牌为工程参考选型，不代表官方或参赛队配置。</p>
+      </div>
+    </aside>
+
+    <section class="stage" id="stage">
+      <canvas id="scene-canvas"></canvas>
+
+      <svg class="label-lines" id="label-lines" aria-hidden="true"></svg>
+      <div class="labels" id="labels"></div>
+      <div class="airflow-labels" id="airflow-labels"></div>
+
+      <div class="stage-badge" id="stage-badge">
+        <span class="pulse"></span>
+        <span id="stage-badge-txt">HANGAR / 360° INSPECTION</span>
+      </div>
+
+      <div class="view-tools" id="view-tools">
+        <button data-view="hero" title="透视视角 (H)">透</button>
+        <button data-view="front" title="正视图 (1)">前</button>
+        <button data-view="side" title="侧视图 (2)">侧</button>
+        <button data-view="top" title="俯视图 (3)">顶</button>
+        <span class="sep"></span>
+        <button data-view="reset" title="重新构图 (F)">⌖</button>
+      </div>
+
+      <div class="stage-scale">
+        <div class="scale-line"><i></i><i></i><i></i></div>
+        <span id="scale-label">SCALE 1:1 · METRIC</span>
+      </div>
+
+      <div class="hint" id="hint">
+        <div class="hint-icon">◎</div>
+        <div>
+          <b>拖拽旋转 · 滚轮缩放</b>
+          <span>点击任意部件触发拆解与参数检视</span>
+        </div>
+        <button id="hint-close" aria-label="关闭提示">×</button>
+      </div>
+
+      <!-- WIND TUNNEL UI -->
+      <div class="mode-ui wind-ui" id="wind-ui" hidden>
+        <div class="mode-head">
+          <div class="eyebrow">SUBSONIC TEST SECTION · 2D/3D</div>
+          <h3>虚拟风洞 <span id="wind-model">—</span></h3>
+          <p>烟线可视化 · 有限翼展升力线修正 · 失速模型</p>
+        </div>
+        <div class="control-row">
+          <label>迎角 α <output id="aoa-val">4.0°</output></label>
+          <input type="range" id="aoa-range" min="-6" max="20" step="0.5" value="4" />
+          <div class="range-ends"><span>−6°</span><span>失速 14°</span><span>20°</span></div>
+        </div>
+        <div class="control-row">
+          <label>风速 V <output id="speed-val">12.0 m/s</output></label>
+          <input type="range" id="speed-range" min="4" max="30" step="0.5" value="12" />
+          <div class="range-ends"><span>4</span><span>17</span><span>30 m/s</span></div>
+        </div>
+        <div class="metric-grid" id="wind-metrics"></div>
+        <div class="chart-wrap">
+          <div class="chart-head"><span>CL — α 曲线</span><span id="stall-tag">ATTACHED</span></div>
+          <canvas id="lift-chart" width="620" height="180"></canvas>
+        </div>
+        <div class="chart-wrap" style="margin-top:6px">
+          <div class="chart-head"><span>A-A 剖面 · 烟线 / 压力</span><span id="section-tag">NACA</span></div>
+          <canvas id="airfoil-chart" width="620" height="170"></canvas>
+        </div>
+        <div class="wind-note" id="wind-note">2D 薄翼 + 3D 有限翼展修正；用于教学演示，非 CFD 求解。</div>
+        <button class="mode-exit" data-mode="showroom">← 返回机库</button>
+      </div>
+
+      <!-- AIRFLOW UI -->
+      <div class="mode-ui airflow-ui" id="airflow-ui" hidden>
+        <div class="mode-head">
+          <div class="eyebrow">SOARING LAB · TERRAIN &amp; THERMALS</div>
+          <h3>气流实验室</h3>
+          <p>地形—流场—姿态耦合演示 · F3K 滑翔机姿态示意</p>
+        </div>
+        <div class="terrain-tabs" id="terrain-tabs">
+          <button data-terrain="ridge" class="active">山脊</button>
+          <button data-terrain="thermal">热气流</button>
+          <button data-terrain="coastal">海岸</button>
+          <button data-terrain="mountain">山地波</button>
+        </div>
+        <div class="control-row">
+          <label>来流风速 <output id="lab-wind-val">9.0 m/s</output></label>
+          <input type="range" id="lab-wind" min="1" max="18" step="0.5" value="9" />
+        </div>
+        <div class="control-row">
+          <label>热气流强度 <output id="lab-thermal-val">1.6 m/s</output></label>
+          <input type="range" id="lab-thermal" min="0" max="4" step="0.1" value="1.6" />
+        </div>
+        <div class="metric-grid" id="airflow-metrics"></div>
+        <div class="airflow-legend">
+          <span><i style="background:#9cffcf"></i>坡升</span>
+          <span><i style="background:#ffd479"></i>热气流</span>
+          <span><i style="background:#ff9a7a"></i>背风转子</span>
+          <span><i style="background:#8bdcff"></i>来流</span>
+        </div>
+        <div class="wind-note" id="airflow-note">迎风坡气流抬升，滑翔机在坡升带内可保持高度；背风侧出现转子与下沉区。</div>
+        <div class="airflow-actions">
+          <button id="lab-pause">Ⅱ 暂停</button>
+          <button class="mode-exit" data-mode="showroom">← 返回机库</button>
+        </div>
+      </div>
+
+      <!-- MISSION HUD -->
+      <div class="mission-layer" id="mission-hud" hidden>
+        <div class="mission-top">
+          <div class="mission-card glass">
+            <div class="eyebrow">FLIGHT CHALLENGE · LIVE SIMULATION</div>
+            <h2 id="mission-title">任务演示</h2>
+            <div class="mission-sub" id="mission-sub">—</div>
+            <div class="mission-stages" id="mission-stages"></div>
+            <div class="progress"><span id="mission-progress"></span></div>
+            <div class="mission-progress-meta"><span id="mission-stage-name">准备</span><span id="mission-time">00:00 / 00:00</span></div>
+          </div>
+          <div class="mission-controls glass">
+            <button data-cam="auto" class="active">自动</button>
+            <button data-cam="chase">跟随</button>
+            <button data-cam="wide">全景</button>
+            <button data-cam="side">侧拍</button>
+            <span class="sep"></span>
+            <button id="mission-pause">Ⅱ</button>
+            <button id="mission-replay">↻</button>
+            <button id="mission-exit" title="返回机库">×</button>
+          </div>
+        </div>
+
+        <div class="inset-view glass" id="inset-view" hidden>
+          <div class="inset-head"><span>DROP ZONE CAM</span><b id="inset-tag">LIVE</b></div>
+          <canvas id="inset-canvas" width="352" height="220"></canvas>
+          <div class="inset-data" id="inset-data"></div>
+        </div>
+
+        <div class="mission-event glass" id="mission-event"><span class="ev-dot"></span><b>任务链路就绪</b></div>
+
+        <div class="mission-bottom">
+          <div class="telemetry glass" id="mission-telemetry">
+            <div><span>ALT</span><b id="tel-alt">0.0</b><small>m</small></div>
+            <div><span>SPD</span><b id="tel-spd">0.0</b><small>m/s</small></div>
+            <div><span>V/S</span><b id="tel-vs">0.0</b><small>m/s</small></div>
+            <div><span id="tel-extra-label">LOAD</span><b id="tel-extra">0.0</b><small id="tel-extra-unit">kg</small></div>
+          </div>
+          <div class="mission-score glass">
+            <div class="eyebrow">RULES 2026 · SCORE LOGIC</div>
+            <div id="mission-score-txt">—</div>
+          </div>
+        </div>
+
+        <div class="fpv-reticle" aria-hidden="true">
+          <i class="r1"></i><i class="r2"></i><i class="r3"></i><i class="r4"></i>
+          <span></span>
+        </div>
+        <div class="fpv-corner c1"></div><div class="fpv-corner c2"></div><div class="fpv-corner c3"></div><div class="fpv-corner c4"></div>
+      </div>
+
+      <div class="loading" id="loading">
+        <div class="loader-ring"></div>
+        <span>BUILDING AIRFRAME…</span>
+      </div>
+      <div class="toast" id="toast"></div>
+    </section>
+
+    <aside class="inspector" id="inspector">
+      <div class="inspector-head" id="inspector-head"></div>
+      <div class="inspector-tabs" id="inspector-tabs"></div>
+      <div class="inspector-scroll" id="inspector-content"></div>
+      <div class="inspector-foot">
+        <span>DATA-SHEET / 2026</span>
+        <span id="part-count">—</span>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="dock" id="dock">
+    <div class="dock-left">
+      <button class="dock-btn primary" id="btn-explode"><span class="ico">⧉</span><span>全部拆解<small>EXPLODE</small></span></button>
+      <button class="dock-btn" id="btn-collapse"><span class="ico">◫</span><span>复原<small>ASSEMBLE</small></span></button>
+      <div class="explode-state">
+        <span>分解度</span>
+        <div class="bar"><i id="explode-bar"></i></div>
+        <b id="explode-val">0%</b>
+      </div>
+    </div>
+    <div class="dock-center">
+      <span class="hud-dot"></span>
+      <span id="dock-status">STANDBY · 选择部件开始检视</span>
+    </div>
+    <div class="dock-right">
+      <button class="dock-btn small" id="btn-labels"><span class="ico">⌑</span><span>标注<small>LABELS</small></span></button>
+      <button class="dock-btn small" id="btn-rotate"><span class="ico">↻</span><span>自转<small>AUTO ORBIT</small></span></button>
+      <button class="dock-btn small" id="btn-shot"><span class="ico">▣</span><span>截图<small>CAPTURE</small></span></button>
+      <button class="dock-btn small" id="btn-full"><span class="ico">⛶</span><span>全屏<small>FULL</small></span></button>
+    </div>
+  </footer>
+</div>
+
+<div class="mobile-shade" id="mobile-shade"></div>
+<script src="js/app.bundle.js"></script>
+</body>
+</html>
